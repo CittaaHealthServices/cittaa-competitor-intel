@@ -91,6 +91,10 @@ async def scrape_competitor(competitor, db: AsyncSession):
     await db.commit()
     logger.info(f"  ✓ {competitor.name}: {total_saved} new posts saved")
 
+    # Self-monitoring alert: if this IS Cittaa, check for high-importance or negative posts
+    if competitor.name.lower() == "cittaa" and total_saved > 0:
+        await _check_self_monitoring_alerts(competitor, db)
+
 
 async def save_posts(posts: list, db: AsyncSession) -> int:
     """Save posts to DB, skip duplicates, run AI analysis"""
@@ -149,6 +153,50 @@ async def save_posts(posts: list, db: AsyncSession) -> int:
             continue
 
     return saved
+
+
+async def _check_self_monitoring_alerts(competitor, db: AsyncSession):
+    """Check if Cittaa's own recent posts need an immediate alert email."""
+    try:
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        result = await db.execute(
+            select(Post)
+            .where(
+                Post.competitor_id == competitor.id,
+                Post.scraped_at >= one_hour_ago,
+            )
+            .order_by(Post.ai_importance_score.desc())
+            .limit(10)
+        )
+        recent_posts = result.scalars().all()
+
+        # Flag posts worth alerting about
+        alert_posts = [
+            p for p in recent_posts
+            if (p.ai_importance_score or 0) >= 7.0 or p.sentiment == "negative" or p.is_viral
+        ]
+        if not alert_posts:
+            return
+
+        from app.email.digest import _send_email, _build_email_html
+        html = _build_email_html(
+            title="🚨 Cittaa Brand Alert",
+            subtitle=f"{len(alert_posts)} important mention(s) about Cittaa just detected",
+            ai_summary=(
+                f"Cittaa has {len(alert_posts)} new high-priority mention(s) that need your attention. "
+                "Check the posts below and take action if needed."
+            ),
+            posts=alert_posts,
+            insights=[]
+        )
+        _send_email(
+            [settings.ADMIN_EMAIL],
+            f"🚨 Cittaa Brand Alert — {len(alert_posts)} important mention(s)",
+            html
+        )
+        logger.info(f"🚨 Self-monitoring alert sent: {len(alert_posts)} important Cittaa posts detected")
+    except Exception as e:
+        logger.error(f"Self-monitoring alert failed: {e}")
 
 
 async def generate_weekly_report():

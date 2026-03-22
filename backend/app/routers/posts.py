@@ -102,6 +102,19 @@ async def competitor_activity(days: int = 7, db: AsyncSession = Depends(get_db))
     ]
 
 
+@router.get("/self-monitor", response_model=List[PostResponse])
+async def get_self_monitoring_posts(days: int = 7, db: AsyncSession = Depends(get_db)):
+    """Get Cittaa's own brand mentions and press coverage (self-monitoring)"""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    result = await db.execute(
+        select(Post)
+        .where(Post.scraped_at >= since, Post.competitor_name == "Cittaa")
+        .order_by(desc(Post.ai_importance_score), desc(Post.scraped_at))
+        .limit(50)
+    )
+    return result.scalars().all()
+
+
 @router.get("/sentiment-timeline")
 async def sentiment_timeline(days: int = 7, db: AsyncSession = Depends(get_db)):
     """Sentiment breakdown over time"""

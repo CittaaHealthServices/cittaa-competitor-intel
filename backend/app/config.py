@@ -38,6 +38,21 @@ settings = Settings()
 
 # Default competitor list for Cittaa (mental health / EdTech wellness space)
 DEFAULT_COMPETITORS = [
+    # ─── CITTAA SELF-MONITORING ────────────────────────────────────────────────
+    # Track your own brand mentions, press, and social activity so you see
+    # how YOU compare alongside competitors in the same dashboard.
+    {
+        "name": "Cittaa",
+        "website": "https://cittaa.in",
+        "linkedin_slug": "cittaa",
+        "twitter_handle": "cittaa_in",
+        "instagram_handle": "cittaa.in",
+        "youtube_channel": "cittaa",
+        "news_keywords": ["Cittaa", "Cittaa mental health", "cittaa.in", "Cittaa wellness"],
+        "category": "Self",
+        "description": "Cittaa — our own brand (self-monitoring)"
+    },
+    # ─── NATIONAL COMPETITORS ─────────────────────────────────────────────────
     {
         "name": "YourDOST",
         "website": "https://yourdost.com",

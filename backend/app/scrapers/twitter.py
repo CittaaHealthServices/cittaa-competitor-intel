@@ -12,16 +12,19 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Nitter instances (public Twitter proxies with RSS)
+# Nitter instances — many are dead; keep a broad list and try all
 NITTER_INSTANCES = [
-    "https://nitter.net",
+    "https://nitter.poast.org",
+    "https://nitter.1d4.us",
+    "https://nitter.foss.wtf",
     "https://nitter.privacydev.net",
-    "https://nitter.poast.org"
+    "https://nitter.kavin.rocks",
+    "https://twiiit.com",
 ]
 
 
 async def scrape_twitter(competitor: dict) -> List[Dict]:
-    """Scrape Twitter/X activity via Nitter RSS or Twitter API"""
+    """Scrape Twitter/X activity via Nitter RSS, Twitter API, or Google News fallback"""
     posts = []
     handle = competitor.get("twitter_handle", "")
     if not handle:
@@ -29,7 +32,7 @@ async def scrape_twitter(competitor: dict) -> List[Dict]:
 
     handle = handle.lstrip("@")
 
-    # Try Nitter RSS first (no auth required)
+    # Try Nitter RSS first (no auth required) — try all instances
     for nitter_base in NITTER_INSTANCES:
         try:
             nitter_posts = await _scrape_nitter(handle, nitter_base, competitor)
@@ -47,6 +50,14 @@ async def scrape_twitter(competitor: dict) -> List[Dict]:
             posts.extend(api_posts)
         except Exception as e:
             logger.warning(f"Twitter API fallback failed: {e}")
+
+    # Final fallback: Google News search for Twitter mentions
+    if not posts:
+        try:
+            gn_posts = await _search_twitter_via_google(handle, competitor)
+            posts.extend(gn_posts)
+        except Exception as e:
+            logger.warning(f"Twitter Google News fallback failed: {e}")
 
     return posts
 
@@ -92,6 +103,45 @@ async def _scrape_nitter(handle: str, nitter_base: str, competitor: dict) -> Lis
                 "published_at": pub_date
             })
 
+    return posts
+
+
+async def _search_twitter_via_google(handle: str, competitor: dict) -> List[Dict]:
+    """Fallback: search Google News for recent tweets/X activity from the competitor"""
+    query = f'site:twitter.com OR site:x.com "{competitor["name"]}"'
+    rss_url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en&gl=IN"
+    posts = []
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(rss_url, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; FeedBot/1.0)"
+            })
+            feed = feedparser.parse(response.text)
+            for entry in feed.entries[:8]:
+                link = entry.get("link", "")
+                if "twitter.com" not in link and "x.com" not in link:
+                    continue
+                content = entry.get("summary", "") or entry.get("description", "")
+                soup = BeautifulSoup(content, "html.parser")
+                content = soup.get_text(separator=" ", strip=True)
+                post_id = hashlib.md5(link.encode()).hexdigest()
+                pub_date = None
+                if hasattr(entry, "published_parsed") and entry.published_parsed:
+                    pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+                posts.append({
+                    "competitor_id": competitor.get("id"),
+                    "competitor_name": competitor["name"],
+                    "platform": "twitter",
+                    "post_id": f"tw_gn_{post_id}",
+                    "author_name": handle,
+                    "author_type": "company",
+                    "title": entry.get("title", ""),
+                    "content": content[:1000],
+                    "url": link,
+                    "published_at": pub_date
+                })
+    except Exception as e:
+        logger.error(f"Twitter Google News search error: {e}")
     return posts
 
 

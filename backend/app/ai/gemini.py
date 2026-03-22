@@ -4,6 +4,8 @@ Gemini AI analysis engine — lazy import so missing API key never crashes start
 import logging
 import json
 import re
+import asyncio
+from functools import partial
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -48,7 +50,9 @@ Provide a JSON response with:
 Return ONLY valid JSON, no markdown.
 """
     try:
-        response = model.generate_content(prompt)
+        # Run blocking Gemini call in thread pool to avoid blocking asyncio event loop
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, partial(model.generate_content, prompt))
         text = response.text.strip()
         text = re.sub(r"```json\n?", "", text)
         text = re.sub(r"```\n?", "", text)
@@ -95,7 +99,8 @@ Generate a strategic intelligence report with:
 Return ONLY valid JSON, no markdown.
 """
     try:
-        response = model.generate_content(prompt)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, partial(model.generate_content, prompt))
         text = response.text.strip()
         text = re.sub(r"```json\n?", "", text)
         text = re.sub(r"```\n?", "", text)
@@ -135,7 +140,8 @@ Write a 200-word executive summary that:
 Keep it scannable. Plain text only, no HTML.
 """
     try:
-        response = model.generate_content(prompt)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, partial(model.generate_content, prompt))
         return response.text.strip()
     except Exception as e:
         logger.error(f"Gemini digest generation failed: {e}")
