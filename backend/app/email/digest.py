@@ -23,7 +23,8 @@ PLATFORM_COLORS = {
     "youtube": "#FF0000",
     "news": "#FF6B35",
     "blog": "#6C63FF",
-    "press_release": "#F7B731"
+    "press_release": "#F7B731",
+    "search": "#34A853",  # Google green for web search results
 }
 
 PLATFORM_ICONS = {
@@ -33,7 +34,8 @@ PLATFORM_ICONS = {
     "youtube": "▶",
     "news": "📰",
     "blog": "✍",
-    "press_release": "📣"
+    "press_release": "📣",
+    "search": "🔍",
 }
 
 IMPORTANCE_COLORS = {

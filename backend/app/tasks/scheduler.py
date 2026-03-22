@@ -12,6 +12,7 @@ from sqlalchemy import select, update
 from app.database import AsyncSessionLocal
 from app.models import Competitor, Post, ScrapingLog, Insight
 from app.scrapers import scrape_linkedin, scrape_twitter, scrape_instagram, scrape_youtube, scrape_news, scrape_blog
+from app.scrapers.search import scrape_deep_search
 from app.ai.gemini import analyze_post, generate_weekly_insights
 from app.config import settings
 
@@ -52,6 +53,7 @@ async def scrape_competitor(competitor, db: AsyncSession):
         "youtube": scrape_youtube,
         "news": scrape_news,
         "blog": scrape_blog,
+        "search": scrape_deep_search,  # Deep web/Google search for press releases, funding, etc.
     }
 
     total_saved = 0

@@ -11,6 +11,7 @@ class PlatformEnum(str, enum.Enum):
     NEWS = "news"
     BLOG = "blog"
     PRESSRELEASE = "press_release"
+    SEARCH = "search"  # Deep Google/web search results
 
 class SentimentEnum(str, enum.Enum):
     POSITIVE = "positive"

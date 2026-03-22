@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     YOUTUBE_API_KEY: str = ""
     TWITTER_BEARER_TOKEN: str = ""
 
+    # Google Search (for deep web research — optional but recommended)
+    # Get from: console.cloud.google.com → Custom Search JSON API
+    # GOOGLE_SEARCH_CX: your Programmable Search Engine ID (cx)
+    GOOGLE_SEARCH_API_KEY: str = ""
+    GOOGLE_SEARCH_CX: str = ""
+
     # CORS
     ALLOWED_ORIGINS: str = "*"
 
