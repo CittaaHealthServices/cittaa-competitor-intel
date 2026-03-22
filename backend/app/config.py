@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # Gemini AI
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-pro"
 
     # Email — uses your existing Railway shared variables (Resend)
     RESEND_API_KEY: str = ""
