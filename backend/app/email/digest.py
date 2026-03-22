@@ -3,7 +3,6 @@ Email digest system — uses Resend API (matches existing Railway shared variabl
 Sends daily & weekly HTML emails to the Cittaa team
 """
 import logging
-import resend
 from datetime import datetime, timezone, timedelta
 from typing import List
 from sqlalchemy import select
@@ -13,9 +12,6 @@ from app.ai.gemini import generate_daily_digest_html
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Configure Resend
-resend.api_key = settings.RESEND_API_KEY
 
 CITTAA_GREEN = "#2EC4B6"
 CITTAA_DARK = "#1a1a2e"
@@ -153,21 +149,26 @@ def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, i
 
 
 def _send_email(to_addresses: List[str], subject: str, html_body: str) -> bool:
-    """Send email via Resend API"""
+    """Send email via Resend API (lazy import so missing package never crashes startup)"""
     if not settings.RESEND_API_KEY:
         logger.warning("RESEND_API_KEY not set — email not sent.")
         return False
 
     try:
-        params = resend.Emails.SendParams(
+        import resend as resend_client
+        resend_client.api_key = settings.RESEND_API_KEY
+        params = resend_client.Emails.SendParams(
             from_=f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>",
             to=to_addresses,
             subject=subject,
             html=html_body,
         )
-        email = resend.Emails.send(params)
-        logger.info(f"Email sent via Resend to {to_addresses} — ID: {email.get('id', '')}")
+        email = resend_client.Emails.send(params)
+        logger.info(f"✅ Email sent via Resend to {to_addresses} — ID: {email.get('id', '')}")
         return True
+    except ImportError:
+        logger.error("resend package not installed — pip install resend")
+        return False
     except Exception as e:
         logger.error(f"Resend email failed: {e}")
         return False

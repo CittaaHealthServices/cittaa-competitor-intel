@@ -1,21 +1,31 @@
-import google.generativeai as genai
-from app.config import settings
+"""
+Gemini AI analysis engine — lazy import so missing API key never crashes startup
+"""
 import logging
 import json
 import re
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel(settings.GEMINI_MODEL)
+def _get_model():
+    """Lazy-load Gemini model only when needed."""
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        return genai.GenerativeModel(settings.GEMINI_MODEL)
+    except Exception as e:
+        logger.warning(f"Gemini model unavailable: {e}")
+        return None
+
 
 async def analyze_post(post_content: str, competitor_name: str, platform: str) -> dict:
-    """
-    Analyze a competitor post with Gemini AI.
-    Returns: summary, sentiment, tags, importance_score, action_items
-    """
+    """Analyze a competitor post with Gemini AI."""
     if not settings.GEMINI_API_KEY:
+        return _default_analysis()
+
+    model = _get_model()
+    if not model:
         return _default_analysis()
 
     prompt = f"""You are a competitive intelligence analyst for Cittaa, an Indian mental health & wellness platform for students and employees.
@@ -30,7 +40,7 @@ Provide a JSON response with:
 1. "summary": 2-3 sentence summary of what this post is about and why it matters to Cittaa
 2. "sentiment": one of "positive", "neutral", "negative" (toward the competitor's brand)
 3. "tags": list of 3-5 relevant tags (e.g., "product launch", "fundraising", "hiring", "new feature", "partnership", "thought leadership", "mental health awareness", "pricing")
-4. "importance_score": float 0-10 (10=critical for Cittaa to know about, e.g. new product, funding round; 1=generic content)
+4. "importance_score": float 0-10 (10=critical for Cittaa to know about; 1=generic content)
 5. "is_viral_potential": boolean - true if this post seems to be gaining significant traction
 6. "insights_for_cittaa": 1-2 specific actionable insights for how Cittaa can respond or capitalize
 7. "category": one of "Product Update", "Company News", "Thought Leadership", "Marketing Campaign", "Hiring", "Partnership", "Award/Recognition", "Funding", "General"
@@ -40,7 +50,6 @@ Return ONLY valid JSON, no markdown.
     try:
         response = model.generate_content(prompt)
         text = response.text.strip()
-        # Remove markdown code blocks if present
         text = re.sub(r"```json\n?", "", text)
         text = re.sub(r"```\n?", "", text)
         result = json.loads(text)
@@ -59,11 +68,13 @@ Return ONLY valid JSON, no markdown.
 
 
 async def generate_weekly_insights(posts_summary: str, competitor_names: list) -> dict:
-    """
-    Generate weekly strategic insights from all competitor activity.
-    """
+    """Generate weekly strategic insights from all competitor activity."""
     if not settings.GEMINI_API_KEY:
-        return {"insights": [], "recommendations": []}
+        return {}
+
+    model = _get_model()
+    if not model:
+        return {}
 
     prompt = f"""You are a senior competitive intelligence analyst for Cittaa, an Indian mental health & wellness platform (cittaa.in).
 
@@ -95,14 +106,16 @@ Return ONLY valid JSON, no markdown.
 
 
 async def generate_daily_digest_html(posts: list, insights: list) -> str:
-    """
-    Generate beautiful HTML email digest content using Gemini.
-    """
+    """Generate digest summary text using Gemini."""
     if not settings.GEMINI_API_KEY or not posts:
         return ""
 
+    model = _get_model()
+    if not model:
+        return ""
+
     posts_text = "\n".join([
-        f"- [{p['platform']}] {p['competitor_name']}: {p.get('ai_summary', p.get('content', '')[:200])}"
+        f"- [{p['platform']}] {p['competitor_name']}: {p.get('ai_summary', p.get('content', ''))[:200]}"
         for p in posts[:20]
     ])
 
@@ -118,7 +131,6 @@ Write a 200-word executive summary that:
 1. Highlights the most important competitor moves today
 2. Flags any urgent actions needed
 3. Has an upbeat, strategic tone
-4. Uses simple bullet points
 
 Keep it scannable. Plain text only, no HTML.
 """

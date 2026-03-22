@@ -1,6 +1,6 @@
 # Multi-stage build: Build React frontend, then serve from FastAPI
 
-# Stage 1: Build React frontend
+# ── Stage 1: Build React frontend ────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /frontend
 COPY frontend/package.json ./
@@ -8,11 +8,11 @@ RUN npm install
 COPY frontend/ .
 RUN npm run build
 
-# Stage 2: FastAPI backend + serve frontend
+# ── Stage 2: FastAPI backend + serve frontend ─────────────────────
 FROM python:3.11-slim
 WORKDIR /app
 
-# System dependencies for Playwright
+# System dependencies (Playwright + scraping libs)
 RUN apt-get update && apt-get install -y \
     gcc g++ curl wget gnupg \
     libglib2.0-0 libnss3 libnspr4 libdbus-1-3 libatk1.0-0 \
@@ -21,20 +21,20 @@ RUN apt-get update && apt-get install -y \
     libasound2 libpango-1.0-0 libcairo2 libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
-COPY backend/requirements.txt .
+# ── Copy requirements FIRST so layer cache is busted on any change ──
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
+# Install Playwright browsers (optional, non-fatal)
 RUN playwright install chromium --with-deps || true
 
-# Copy backend code
+# Copy all backend code
 COPY backend/ .
 
-# Copy built frontend
+# Copy built frontend dist
 COPY --from=builder /frontend/dist ./frontend/dist
 
 EXPOSE 8080
 
-# Use shell form so $PORT env var (set by Railway) gets expanded
+# Shell form so $PORT is expanded by Railway
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1
