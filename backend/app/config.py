@@ -15,12 +15,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
 
-    # Email
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    DIGEST_RECIPIENTS: str = "sairam@cittaa.in"
+    # Email — uses your existing Railway shared variables (Resend)
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "sairam@cittaa.in"
+    RESEND_FROM_NAME: str = "Cittaa Intel"
+    ADMIN_EMAIL: str = "sairam@cittaa.in"   # digest recipient (shared var)
 
     # Scraping
     SCRAPE_INTERVAL_HOURS: int = 6

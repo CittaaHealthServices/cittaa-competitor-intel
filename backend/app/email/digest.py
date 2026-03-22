@@ -1,10 +1,9 @@
 """
-Email digest system - sends daily & weekly HTML emails to the Cittaa team
+Email digest system — uses Resend API (matches existing Railway shared variables)
+Sends daily & weekly HTML emails to the Cittaa team
 """
-import smtplib
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import resend
 from datetime import datetime, timezone, timedelta
 from typing import List
 from sqlalchemy import select
@@ -14,6 +13,9 @@ from app.ai.gemini import generate_daily_digest_html
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Configure Resend
+resend.api_key = settings.RESEND_API_KEY
 
 CITTAA_GREEN = "#2EC4B6"
 CITTAA_DARK = "#1a1a2e"
@@ -29,7 +31,7 @@ PLATFORM_COLORS = {
 }
 
 PLATFORM_ICONS = {
-    "linkedin": "in",
+    "linkedin": "💼",
     "twitter": "𝕏",
     "instagram": "📸",
     "youtube": "▶",
@@ -49,7 +51,6 @@ IMPORTANCE_COLORS = {
 def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, insights: list) -> str:
     """Build beautiful HTML email"""
 
-    # Build post cards
     post_cards = ""
     for post in posts[:15]:
         platform = post.platform if hasattr(post, 'platform') else post.get('platform', 'news')
@@ -61,7 +62,10 @@ def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, i
         url = post.url if hasattr(post, 'url') else post.get('url', '#')
         score = post.ai_importance_score if hasattr(post, 'ai_importance_score') else post.get('ai_importance_score', 5.0)
         tags = post.ai_tags if hasattr(post, 'ai_tags') else post.get('ai_tags', [])
-        tags_html = " ".join([f'<span style="background:{CITTAA_GREEN};color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:4px;">{t}</span>' for t in (tags or [])[:3]])
+        tags_html = " ".join([
+            f'<span style="background:{CITTAA_GREEN};color:white;padding:2px 8px;border-radius:10px;font-size:11px;margin-right:4px;">{t}</span>'
+            for t in (tags or [])[:3]
+        ])
 
         post_cards += f"""
         <div style="background:white;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.06);">
@@ -76,7 +80,6 @@ def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, i
         </div>
         """
 
-    # Build insight cards
     insight_cards = ""
     for insight in insights[:5]:
         ins_type = insight.insight_type if hasattr(insight, 'insight_type') else insight.get('insight_type', 'trend')
@@ -97,48 +100,47 @@ def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, i
         </div>
         """
 
+    insights_section = f"""
+        <h2 style="margin:20px 0 16px;font-size:16px;color:{CITTAA_DARK};font-weight:700;">⚡ Strategic Insights</h2>
+        {insight_cards}
+    """ if insight_cards else ""
+
     return f"""
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Inter',-apple-system,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:24px 0;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-  <!-- Header -->
   <tr><td style="background:linear-gradient(135deg,{CITTAA_DARK} 0%,#16213e 100%);border-radius:16px 16px 0 0;padding:32px 32px 24px;">
-    <h1 style="margin:0;color:white;font-size:28px;font-weight:800;font-family:'Georgia',serif;">
+    <h1 style="margin:0;color:white;font-size:28px;font-weight:800;font-family:'Kaushan Script',Georgia,serif;">
       <span style="color:{CITTAA_GREEN};">Cittaa</span> Intel
     </h1>
     <p style="margin:6px 0 0;color:#aaa;font-size:14px;">{subtitle}</p>
     <p style="margin:4px 0 0;color:#666;font-size:12px;">{datetime.now(timezone.utc).strftime('%B %d, %Y')}</p>
   </td></tr>
 
-  <!-- AI Summary -->
   <tr><td style="background:{CITTAA_GREEN};padding:20px 32px;">
     <p style="margin:0;color:white;font-size:13px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">🤖 AI Executive Summary</p>
     <p style="margin:8px 0 0;color:white;font-size:14px;line-height:1.7;opacity:0.95;">{ai_summary}</p>
   </td></tr>
 
-  <!-- Body -->
   <tr><td style="background:#f8fafc;padding:24px 32px;">
-
-    <!-- Insights -->
-    {"<h2 style='margin:0 0 16px;font-size:16px;color:" + CITTAA_DARK + ";font-weight:700;'>⚡ Strategic Insights</h2>" + insight_cards if insight_cards else ""}
-
-    <!-- Posts -->
+    {insights_section}
     <h2 style="margin:20px 0 16px;font-size:16px;color:{CITTAA_DARK};font-weight:700;">🔍 Latest Competitor Activity</h2>
     {post_cards if post_cards else '<p style="color:#888;font-size:14px;">No new posts found in this period.</p>'}
-
   </td></tr>
 
-  <!-- Footer -->
   <tr><td style="background:{CITTAA_DARK};border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
     <p style="margin:0;color:#888;font-size:12px;">
-      Powered by <strong style="color:{CITTAA_GREEN};">Cittaa Intel</strong> · AI by Google Gemini<br>
-      <a href="#" style="color:{CITTAA_GREEN};text-decoration:none;">View Dashboard</a> &nbsp;·&nbsp;
-      <a href="mailto:sairam@cittaa.in" style="color:#888;text-decoration:none;">sairam@cittaa.in</a>
+      Powered by <strong style="color:{CITTAA_GREEN};">Cittaa Intel</strong> · AI by Google Gemini · Email by Resend<br>
+      <a href="mailto:{settings.ADMIN_EMAIL}" style="color:{CITTAA_GREEN};text-decoration:none;">{settings.ADMIN_EMAIL}</a>
     </p>
   </td></tr>
 
@@ -150,29 +152,24 @@ def _build_email_html(title: str, subtitle: str, ai_summary: str, posts: list, i
 """
 
 
-def _send_email(to_addresses: List[str], subject: str, html_body: str):
-    """Send email via SMTP"""
-    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-        logger.warning("SMTP not configured. Email not sent.")
+def _send_email(to_addresses: List[str], subject: str, html_body: str) -> bool:
+    """Send email via Resend API"""
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set — email not sent.")
         return False
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"Cittaa Intel <{settings.SMTP_USER}>"
-        msg["To"] = ", ".join(to_addresses)
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_USER, to_addresses, msg.as_string())
-
-        logger.info(f"Email sent to {to_addresses}")
+        params = resend.Emails.SendParams(
+            from_=f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>",
+            to=to_addresses,
+            subject=subject,
+            html=html_body,
+        )
+        email = resend.Emails.send(params)
+        logger.info(f"Email sent via Resend to {to_addresses} — ID: {email.get('id', '')}")
         return True
     except Exception as e:
-        logger.error(f"Email sending failed: {e}")
+        logger.error(f"Resend email failed: {e}")
         return False
 
 
@@ -197,8 +194,11 @@ async def send_daily_digest_email():
         )
         insights = insights_result.scalars().all()
 
-        posts_dicts = [{"platform": p.platform, "competitor_name": p.competitor_name,
-                        "ai_summary": p.ai_summary, "content": p.content} for p in posts]
+        posts_dicts = [
+            {"platform": p.platform, "competitor_name": p.competitor_name,
+             "ai_summary": p.ai_summary, "content": p.content}
+            for p in posts
+        ]
         insights_dicts = [{"title": i.title} for i in insights]
 
         ai_summary = await generate_daily_digest_html(posts_dicts, insights_dicts)
@@ -206,12 +206,12 @@ async def send_daily_digest_email():
         html = _build_email_html(
             title="Daily Competitor Intel",
             subtitle=f"Daily Intelligence Report · {len(posts)} updates across {len(set(p.competitor_name for p in posts))} competitors",
-            ai_summary=ai_summary or "Monitoring complete. Check your dashboard for the latest competitor updates.",
+            ai_summary=ai_summary or "Monitoring complete. Check your dashboard for details.",
             posts=posts,
             insights=insights
         )
 
-        recipients = [r.strip() for r in settings.DIGEST_RECIPIENTS.split(",")]
+        recipients = [settings.ADMIN_EMAIL]
         today = datetime.now(timezone.utc).strftime("%b %d")
         _send_email(recipients, f"🔍 Cittaa Daily Intel — {today}", html)
 
@@ -236,6 +236,6 @@ async def send_weekly_digest(posts: list, weekly_data: dict):
         insights=insights_list
     )
 
-    recipients = [r.strip() for r in settings.DIGEST_RECIPIENTS.split(",")]
+    recipients = [settings.ADMIN_EMAIL]
     week = datetime.now(timezone.utc).strftime("Week of %b %d")
     _send_email(recipients, f"📊 Cittaa Weekly Intel — {week}", html)
