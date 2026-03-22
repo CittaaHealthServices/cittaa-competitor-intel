@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
-import { getDashboardStats, getTopPosts, getPlatformBreakdown, getCompetitorActivity, getSentimentData, getInsights } from '../services/api'
+import { getDashboardStats, getTopPosts, getPlatformBreakdown, getCompetitorActivity, getSentimentData, getInsights, getSelfMonitorPosts } from '../services/api'
 import { TrendingUp, Globe2, Zap, AlertCircle, Eye, ThumbsUp, MessageCircle, Share2, ChevronRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { PLATFORM_META } from '../App'
@@ -86,18 +86,20 @@ export default function Dashboard() {
   const [competitorData, setCompetitorData] = useState([])
   const [sentimentData, setSentimentData] = useState([])
   const [alerts, setAlerts] = useState([])
+  const [selfPosts, setSelfPosts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [s, p, pl, ca, sent, ins] = await Promise.all([
+        const [s, p, pl, ca, sent, ins, self] = await Promise.all([
           getDashboardStats(),
           getTopPosts(7, 8),
           getPlatformBreakdown(7),
           getCompetitorActivity(7),
           getSentimentData(7),
-          getInsights({ days: 7 })
+          getInsights({ days: 7 }),
+          getSelfMonitorPosts(7).catch(() => ({ data: [] }))
         ])
         setStats(s.data)
         setTopPosts(p.data)
@@ -109,6 +111,7 @@ export default function Dashboard() {
           { name: 'Negative', value: sent.data.find(d => d.sentiment === 'negative')?.count || 0, color: '#FF4757' },
         ])
         setAlerts(ins.data.filter(i => ['high', 'critical'].includes(i.importance)).slice(0, 3))
+        setSelfPosts(self.data || [])
       } catch (e) {
         console.error('Dashboard load error:', e)
       } finally {
@@ -216,6 +219,43 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Cittaa Brand Monitor */}
+      {selfPosts.length > 0 && (
+        <div className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">🏠 Cittaa Brand Monitor</h2>
+              <p className="text-white/50 text-xs mt-0.5">Your own brand mentions & press coverage this week</p>
+            </div>
+            <span className="bg-[#2EC4B6]/20 text-[#2EC4B6] text-xs font-semibold px-3 py-1 rounded-full">{selfPosts.length} mentions</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {selfPosts.slice(0, 3).map(p => {
+              const meta = PLATFORM_META[p.platform] || { label: p.platform, color: '#888', emoji: '📌' }
+              const score = p.ai_importance_score || 0
+              const sentColor = p.sentiment === 'negative' ? '#FF4757' : p.sentiment === 'positive' ? '#2EC4B6' : '#94a3b8'
+              return (
+                <div key={p.id} className="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/10 hover:bg-white/15 transition">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ background: meta.color }}>
+                      {meta.emoji} {meta.label}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {p.sentiment === 'negative' && <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">⚠️ Negative</span>}
+                      <span className="text-xs font-semibold" style={{ color: score >= 7 ? '#FF6B35' : '#2EC4B6' }}>⚡{score.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <p className="text-white/80 text-sm line-clamp-2">{p.ai_summary || p.title || p.content || '—'}</p>
+                  {p.url && (
+                    <a href={p.url} target="_blank" rel="noreferrer" className="text-[#2EC4B6] text-xs mt-2 block hover:underline">View source →</a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Top posts */}
       <div>

@@ -26,6 +26,7 @@ export const getTopPosts = (days = 7, limit = 10) => api.get('/posts/top', { par
 export const getPlatformBreakdown = (days = 7) => api.get('/posts/platform-breakdown', { params: { days } })
 export const getCompetitorActivity = (days = 7) => api.get('/posts/competitor-activity', { params: { days } })
 export const getSentimentData = (days = 7) => api.get('/posts/sentiment-timeline', { params: { days } })
+export const getSelfMonitorPosts = (days = 7) => api.get('/posts/self-monitor', { params: { days } })
 
 // Insights
 export const getInsights = (params = {}) => api.get('/insights/', { params })

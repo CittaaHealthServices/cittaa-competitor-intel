@@ -12,13 +12,14 @@ import SettingsPage from './pages/SettingsPage'
 import { triggerScrapeAll, sendDigestNow } from './services/api'
 
 const PLATFORM_META = {
-  linkedin:  { label: 'LinkedIn',   color: '#0077B5', emoji: '💼' },
-  twitter:   { label: 'Twitter/X',  color: '#1DA1F2', emoji: '𝕏' },
-  instagram: { label: 'Instagram',  color: '#E1306C', emoji: '📸' },
-  youtube:   { label: 'YouTube',    color: '#FF0000', emoji: '▶' },
-  news:      { label: 'News',       color: '#FF6B35', emoji: '📰' },
-  blog:      { label: 'Blog',       color: '#6C63FF', emoji: '✍' },
-  press_release: { label: 'Press',  color: '#F7B731', emoji: '📣' },
+  linkedin:      { label: 'LinkedIn',   color: '#0077B5', emoji: '💼' },
+  twitter:       { label: 'Twitter/X',  color: '#1DA1F2', emoji: '𝕏' },
+  instagram:     { label: 'Instagram',  color: '#E1306C', emoji: '📸' },
+  youtube:       { label: 'YouTube',    color: '#FF0000', emoji: '▶' },
+  news:          { label: 'News',       color: '#FF6B35', emoji: '📰' },
+  blog:          { label: 'Blog',       color: '#6C63FF', emoji: '✍' },
+  press_release: { label: 'Press',      color: '#F7B731', emoji: '📣' },
+  search:        { label: 'Web Search', color: '#34A853', emoji: '🔍' },
 }
 
 export { PLATFORM_META }

@@ -10,7 +10,11 @@ function CompetitorCard({ comp, onScrape, onDelete }) {
     try { await onScrape(comp.id) } finally { setScraping(false) }
   }
 
-  const categoryColor = comp.category === 'International' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'
+  const categoryColor = comp.category === 'International'
+    ? 'bg-purple-100 text-purple-700'
+    : comp.category === 'Self'
+    ? 'bg-[#2EC4B6]/10 text-[#0b6e6e] border border-[#2EC4B6]/30'
+    : 'bg-teal-100 text-teal-700'
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 fade-in hover:shadow-md transition-shadow">
@@ -130,6 +134,7 @@ function AddCompetitorModal({ onClose, onAdd }) {
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2EC4B6]">
                 <option>National</option>
                 <option>International</option>
+                <option>Self</option>
               </select>
             </div>
             <div className="col-span-2">
@@ -218,11 +223,16 @@ export default function Competitors() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
-        {['All', 'National', 'International'].map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${filter === f ? 'bg-[#1a1a2e] text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>
-            {f}
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { label: 'All', emoji: '' },
+          { label: 'Self', emoji: '🏠' },
+          { label: 'National', emoji: '🇮🇳' },
+          { label: 'International', emoji: '🌍' },
+        ].map(({ label, emoji }) => (
+          <button key={label} onClick={() => setFilter(label)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${filter === label ? 'bg-[#1a1a2e] text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>
+            {emoji && <span className="mr-1">{emoji}</span>}{label}
           </button>
         ))}
       </div>
