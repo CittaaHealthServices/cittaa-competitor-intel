@@ -3,16 +3,27 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy import create_engine
 from app.config import settings
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
+# Validate that POSTGRES_URL is actually a PostgreSQL URL
+_raw_url = settings.POSTGRES_URL
+if not (_raw_url.startswith("postgresql") or _raw_url.startswith("postgres")):
+    logger.error(
+        f"POSTGRES_URL does not look like a PostgreSQL URL: {_raw_url[:40]}...\n"
+        "Make sure POSTGRES_URL is set to your Railway PostgreSQL connection string, "
+        "not a MongoDB or other URI."
+    )
+    sys.exit(1)
+
 # Convert postgresql:// to postgresql+asyncpg:// for async
-async_db_url = settings.DATABASE_URL.replace(
+async_db_url = _raw_url.replace(
     "postgresql://", "postgresql+asyncpg://"
 ).replace("postgres://", "postgresql+asyncpg://")
 
 # Sync URL for Alembic migrations
-sync_db_url = settings.DATABASE_URL.replace(
+sync_db_url = _raw_url.replace(
     "postgresql+asyncpg://", "postgresql://"
 ).replace("postgres://", "postgresql://")
 

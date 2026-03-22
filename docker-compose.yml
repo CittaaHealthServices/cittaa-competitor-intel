@@ -22,7 +22,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/cittaa_intel
+      POSTGRES_URL: postgresql://postgres:password@db:5432/cittaa_intel
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}

@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "cittaa-secret-key-change-in-production"
 
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/cittaa_intel"
+    # Database — use POSTGRES_URL to avoid collision with Railway's shared DATABASE_URL (MongoDB)
+    POSTGRES_URL: str = "postgresql://postgres:password@localhost:5432/cittaa_intel"
 
     # Gemini AI
     GEMINI_API_KEY: str = ""
