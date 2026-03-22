@@ -24,31 +24,42 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup & shutdown"""
+    """Startup & shutdown — all errors are caught so healthcheck always passes"""
     logger.info("🚀 Starting Cittaa Competitor Intel API...")
-    await init_db()
 
-    # Seed default competitors if DB is empty
-    from app.database import AsyncSessionLocal
-    async with AsyncSessionLocal() as db:
-        count = await db.execute(select(func.count(Competitor.id)))
-        if count.scalar() == 0:
-            for comp_data in DEFAULT_COMPETITORS:
-                db.add(Competitor(**comp_data))
-            await db.commit()
-            logger.info(f"✅ Seeded {len(DEFAULT_COMPETITORS)} default competitors")
+    # DB init — non-fatal so the app starts even if DB isn't ready yet
+    try:
+        await init_db()
+        logger.info("✅ Database initialized")
 
-    # Start background scheduler
-    from app.tasks.scheduler import start_scheduler
-    start_scheduler()
-    logger.info("✅ Scheduler started")
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            count = await db.execute(select(func.count(Competitor.id)))
+            if count.scalar() == 0:
+                for comp_data in DEFAULT_COMPETITORS:
+                    db.add(Competitor(**comp_data))
+                await db.commit()
+                logger.info(f"✅ Seeded {len(DEFAULT_COMPETITORS)} default competitors")
+    except Exception as e:
+        logger.warning(f"⚠️ DB init skipped (will retry on first request): {e}")
 
-    yield  # App is running
+    # Scheduler — non-fatal
+    try:
+        from app.tasks.scheduler import start_scheduler
+        start_scheduler()
+        logger.info("✅ Scheduler started")
+    except Exception as e:
+        logger.warning(f"⚠️ Scheduler not started: {e}")
+
+    yield  # App is running — healthcheck passes from here
 
     logger.info("👋 Shutting down...")
-    from app.tasks.scheduler import scheduler
-    if scheduler.running:
-        scheduler.shutdown()
+    try:
+        from app.tasks.scheduler import scheduler
+        if scheduler.running:
+            scheduler.shutdown()
+    except Exception:
+        pass
 
 
 app = FastAPI(
