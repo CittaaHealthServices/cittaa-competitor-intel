@@ -10,9 +10,13 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from app.database import AsyncSessionLocal
-from app.models import Competitor, Post, ScrapingLog, Insight
+from app.models import Competitor, Post, ScrapingLog, Insight, CompetitorIntel
 from app.scrapers import scrape_linkedin, scrape_twitter, scrape_instagram, scrape_youtube, scrape_news, scrape_blog
 from app.scrapers.search import scrape_deep_search
+from app.scrapers.appstore import scrape_appstore_posts, scrape_appstore_intel
+from app.scrapers.jobs import scrape_jobs
+from app.scrapers.funding import scrape_funding
+from app.scrapers.techstack import scrape_techstack, get_techstack_structured
 from app.ai.gemini import analyze_post, generate_weekly_insights
 from app.config import settings
 
@@ -47,13 +51,17 @@ async def scrape_competitor(competitor, db: AsyncSession):
     }
 
     scrapers = {
-        "linkedin": scrape_linkedin,
-        "twitter": scrape_twitter,
+        "linkedin":  scrape_linkedin,
+        "twitter":   scrape_twitter,
         "instagram": scrape_instagram,
-        "youtube": scrape_youtube,
-        "news": scrape_news,
-        "blog": scrape_blog,
-        "search": scrape_deep_search,  # Deep web/Google search for press releases, funding, etc.
+        "youtube":   scrape_youtube,
+        "news":      scrape_news,
+        "blog":      scrape_blog,
+        "search":    scrape_deep_search,
+        "appstore":  scrape_appstore_posts,
+        "jobs":      scrape_jobs,
+        "funding":   scrape_funding,
+        "techstack": scrape_techstack,
     }
 
     total_saved = 0
@@ -201,6 +209,115 @@ async def _check_self_monitoring_alerts(competitor, db: AsyncSession):
         logger.error(f"Self-monitoring alert failed: {e}")
 
 
+async def refresh_deep_intel():
+    """Refresh structured deep intel (app store, funding, techstack) — runs daily."""
+    logger.info("🔬 Refreshing deep competitor intelligence...")
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Competitor).where(Competitor.is_active == True))
+        competitors = result.scalars().all()
+
+        for competitor in competitors:
+            comp_dict = {
+                "id": competitor.id,
+                "name": competitor.name,
+                "website": competitor.website,
+                "linkedin_slug": competitor.linkedin_slug,
+            }
+            try:
+                await _upsert_competitor_intel(comp_dict, db)
+            except Exception as e:
+                logger.error(f"Deep intel refresh failed for {competitor.name}: {e}")
+
+    logger.info("✅ Deep intel refresh complete")
+
+
+async def _upsert_competitor_intel(comp_dict: dict, db: AsyncSession):
+    """Fetch and store structured intel for one competitor."""
+    from sqlalchemy import insert
+    name = comp_dict["name"]
+    comp_id = comp_dict["id"]
+
+    # App store
+    appstore_data = {}
+    try:
+        intel = await scrape_appstore_intel(comp_dict)
+        gp = intel.get("google_play") or {}
+        ap = intel.get("apple_store") or {}
+        appstore_data = {
+            "google_play_rating": gp.get("rating"),
+            "google_play_reviews": gp.get("reviews_count"),
+            "google_play_installs": gp.get("installs"),
+            "google_play_version": gp.get("version"),
+            "google_play_last_updated": gp.get("last_updated"),
+            "google_play_url": gp.get("url"),
+            "apple_rating": ap.get("rating"),
+            "apple_reviews": ap.get("reviews_count"),
+            "apple_version": ap.get("version"),
+            "apple_last_updated": ap.get("last_updated"),
+            "apple_url": ap.get("url"),
+            "top_reviews": gp.get("top_reviews", []) or [],
+        }
+    except Exception as e:
+        logger.warning(f"App store intel failed for {name}: {e}")
+
+    # Jobs
+    jobs_data = {}
+    try:
+        job_posts = await scrape_jobs(comp_dict)
+        open_roles = [
+            {"title": p["title"].replace("🧑‍💼 Hiring: ", "").split(" — ")[0], "platform": p["author_name"], "signal": p["content"], "url": p.get("url", "")}
+            for p in job_posts[:20]
+        ]
+        hiring_signals = list(set([
+            p["content"].split(". ")[-1] for p in job_posts
+            if "Strategic Signal" in p.get("content", "")
+        ]))[:10]
+        jobs_data = {
+            "open_roles": open_roles,
+            "hiring_signals": hiring_signals,
+            "total_open_roles": len(open_roles),
+        }
+    except Exception as e:
+        logger.warning(f"Jobs intel failed for {name}: {e}")
+
+    # Tech stack
+    tech_data = {}
+    try:
+        ts = await get_techstack_structured(comp_dict)
+        tech_data = {
+            "technologies": ts.get("technologies", []),
+            "tech_categories": {k: [t["name"] for t in v] for k, v in ts.get("categories", {}).items()},
+        }
+    except Exception as e:
+        logger.warning(f"Tech stack intel failed for {name}: {e}")
+
+    # Merge all data
+    intel_values = {
+        "competitor_id": comp_id,
+        "competitor_name": name,
+        "last_refreshed_at": datetime.now(timezone.utc),
+        **appstore_data,
+        **jobs_data,
+        **tech_data,
+    }
+
+    # Upsert
+    existing = await db.execute(
+        select(CompetitorIntel).where(CompetitorIntel.competitor_id == comp_id)
+    )
+    existing_row = existing.scalar_one_or_none()
+
+    if existing_row:
+        for key, val in intel_values.items():
+            if key not in ("competitor_id",) and val is not None:
+                setattr(existing_row, key, val)
+    else:
+        db.add(CompetitorIntel(**intel_values))
+
+    await db.commit()
+    logger.info(f"  ✓ Deep intel refreshed for {name}")
+
+
 async def generate_weekly_report():
     """Run every Monday morning - generate strategic weekly insights"""
     logger.info("📊 Generating weekly insights report...")
@@ -284,6 +401,14 @@ def start_scheduler():
         scrape_all_competitors,
         CronTrigger(hour="0,6,12,18", minute=0, timezone="Asia/Kolkata"),
         id="scrape_competitors",
+        replace_existing=True
+    )
+
+    # Deep intel refresh every day at 3 AM IST (low-traffic)
+    scheduler.add_job(
+        refresh_deep_intel,
+        CronTrigger(hour=3, minute=0, timezone="Asia/Kolkata"),
+        id="deep_intel_refresh",
         replace_existing=True
     )
 

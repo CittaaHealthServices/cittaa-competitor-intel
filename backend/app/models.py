@@ -11,7 +11,11 @@ class PlatformEnum(str, enum.Enum):
     NEWS = "news"
     BLOG = "blog"
     PRESSRELEASE = "press_release"
-    SEARCH = "search"  # Deep Google/web search results
+    SEARCH = "search"        # Deep Google/web search results
+    APPSTORE = "appstore"    # Google Play + Apple App Store
+    JOBS = "jobs"            # LinkedIn Jobs, Indeed, Naukri
+    FUNDING = "funding"      # Crunchbase, funding news
+    TECHSTACK = "techstack"  # Website technology detection
 
 class SentimentEnum(str, enum.Enum):
     POSITIVE = "positive"
@@ -119,4 +123,47 @@ class AlertRule(Base):
     min_importance_score = Column(Float, default=7.0)
     email_alert = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class CompetitorIntel(Base):
+    """Stores structured deep intelligence per competitor — refreshed periodically."""
+    __tablename__ = "competitor_intel"
+
+    id = Column(Integer, primary_key=True, index=True)
+    competitor_id = Column(Integer, nullable=False, index=True, unique=True)
+    competitor_name = Column(String(255), nullable=False)
+
+    # App Store
+    google_play_rating = Column(Float)
+    google_play_reviews = Column(Integer)
+    google_play_installs = Column(String(50))
+    google_play_version = Column(String(50))
+    google_play_last_updated = Column(String(50))
+    google_play_url = Column(String(500))
+    apple_rating = Column(Float)
+    apple_reviews = Column(Integer)
+    apple_version = Column(String(50))
+    apple_last_updated = Column(String(50))
+    apple_url = Column(String(500))
+    top_reviews = Column(JSON, default=[])
+
+    # Funding
+    total_funding = Column(String(100))
+    last_round = Column(String(100))
+    last_round_year = Column(Integer)
+    investors = Column(JSON, default=[])
+    crunchbase_url = Column(String(500))
+
+    # Hiring
+    open_roles = Column(JSON, default=[])          # list of {title, platform, signal, url}
+    hiring_signals = Column(JSON, default=[])       # unique strategic signals detected
+    total_open_roles = Column(Integer, default=0)
+
+    # Tech Stack
+    technologies = Column(JSON, default=[])         # [{name, category, signal}]
+    tech_categories = Column(JSON, default={})      # {category: [tech_name, ...]}
+
+    # Meta
+    last_refreshed_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())

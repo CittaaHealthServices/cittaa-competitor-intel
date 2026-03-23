@@ -13,9 +13,10 @@ import logging
 import os
 
 from app.database import init_db, get_db
-from app.models import Post, Competitor, Insight
+from app.models import Post, Competitor, Insight, CompetitorIntel
 from app.schemas import DashboardStats
 from app.routers import competitors, posts, insights
+from app.routers import intel as intel_router
 from app.config import settings, DEFAULT_COMPETITORS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -83,6 +84,7 @@ app.add_middleware(
 app.include_router(competitors.router, prefix="/api")
 app.include_router(posts.router, prefix="/api")
 app.include_router(insights.router, prefix="/api")
+app.include_router(intel_router.router, prefix="/api")
 
 
 @app.get("/api/health")

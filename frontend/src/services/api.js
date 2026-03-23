@@ -33,6 +33,15 @@ export const getInsights = (params = {}) => api.get('/insights/', { params })
 export const markInsightRead = (id) => api.post(`/insights/${id}/read`)
 export const generateWeeklyInsights = () => api.post('/insights/generate-weekly')
 
+// Deep Intel
+export const getAllIntel = () => api.get('/intel/')
+export const getCompetitorIntel = (id) => api.get(`/intel/${id}`)
+export const refreshCompetitorIntel = (id) => api.post(`/intel/${id}/refresh`)
+export const refreshAllIntel = () => api.post('/intel/refresh-all')
+export const getCompetitorJobs = (id) => api.get(`/intel/${id}/jobs`)
+export const getCompetitorFundingNews = (id) => api.get(`/intel/${id}/funding-news`)
+export const getAppStoreReviews = (id) => api.get(`/intel/${id}/appstore-reviews`)
+
 // Actions
 export const triggerScrapeAll = () => api.post('/scrape/trigger-all')
 export const sendDigestNow = () => api.post('/email/send-digest')
