@@ -3,19 +3,25 @@ Content Playbook Advisor
 Generates LinkedIn + Instagram post recommendations AND SEO strategy for Cittaa
 using competitor intelligence context and Gemini 2.5 Pro.
 """
+import asyncio
 import json
 import logging
 from datetime import datetime
-
-import google.generativeai as genai
-from app.config import settings
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
-try:
-    genai.configure(api_key=settings.gemini_api_key)
-except Exception:
-    pass
+
+def _get_model():
+    """Lazy-load Gemini model — never crashes startup if key is missing."""
+    try:
+        import google.generativeai as genai
+        from app.config import settings
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        return genai.GenerativeModel(settings.GEMINI_MODEL)
+    except Exception as e:
+        logger.warning(f"Gemini model unavailable for content advisor: {e}")
+        return None
 
 CITTAA_CONTEXT = """
 Cittaa (cittaa.in) is an Indian B2B + B2C mental wellness platform.
@@ -207,9 +213,19 @@ Rules:
 - Blog content ideas must target keywords that competitors are weak on
 """
 
+    from app.config import settings
+    if not settings.GEMINI_API_KEY:
+        logger.warning("No GEMINI_API_KEY set — returning fallback content recommendations")
+        return _fallback_recommendations()
+
+    model = _get_model()
+    if not model:
+        return _fallback_recommendations()
+
     try:
-        model = genai.GenerativeModel("gemini-2.5-pro")
-        response = model.generate_content(prompt)
+        # Run blocking Gemini call in thread pool — never block the asyncio event loop
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, partial(model.generate_content, prompt))
         text = response.text.strip()
 
         # Strip markdown code fences if present
