@@ -127,6 +127,17 @@ DEFAULT_COMPETITORS = [
         "description": "Mental health platform for young adults"
     },
     {
+        "name": "Silver Oak Health",
+        "website": "https://web.silveroakhealth.com",
+        "linkedin_slug": "silveroakhealth",
+        "twitter_handle": "Silveroakhealth",
+        "instagram_handle": "silveroakhealth",
+        "youtube_channel": "",
+        "news_keywords": ["Silver Oak Health", "silveroakhealth", "Silver Oak EAP"],
+        "category": "National",
+        "description": "Employee Assistance Program (EAP) & corporate mental wellness platform"
+    },
+    {
         "name": "Talkspace",
         "website": "https://talkspace.com",
         "linkedin_slug": "talkspace",

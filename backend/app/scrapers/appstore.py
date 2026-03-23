@@ -26,7 +26,8 @@ GOOGLE_PLAY_IDS = {
     "BetterHelp": "com.betterhelp",
     "Headspace":  "com.getsomeheadspace.android",
     "Calm":       "com.calm.android",
-    "Cittaa":     "in.cittaa.app",
+    "Cittaa":           "in.cittaa.app",
+    "Silver Oak Health": "com.silveroakhealth.ewap",
 }
 
 # Apple App Store IDs
@@ -37,7 +38,8 @@ APPLE_APP_IDS = {
     "Headspace":  "493145008",
     "Calm":       "571800810",
     "Talkspace":  "661829386",
-    "BetterHelp": "968289966",
+    "BetterHelp":        "968289966",
+    "Silver Oak Health": "1536714073",
 }
 
 
