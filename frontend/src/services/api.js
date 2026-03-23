@@ -44,7 +44,9 @@ export const getAppStoreReviews = (id) => api.get(`/intel/${id}/appstore-reviews
 
 // Content Playbook
 export const getContentRecommendations = (forceRefresh = false) =>
-  api.get('/content/recommendations', { params: { force_refresh: forceRefresh }, timeout: 60000 })
+  api.get('/content/recommendations', { params: { force_refresh: forceRefresh }, timeout: 15000 })
+export const getContentStatus = () =>
+  api.get('/content/status', { timeout: 5000 })
 
 // Actions
 export const triggerScrapeAll = () => api.post('/scrape/trigger-all')

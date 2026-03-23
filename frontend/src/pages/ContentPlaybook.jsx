@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, Calendar, Hash, BarChart2, AlertCircle,
   Search, Globe, FileText, Link, AlertTriangle, CheckCircle2, ArrowUpRight
 } from 'lucide-react'
-import { getContentRecommendations } from '../services/api'
+import { getContentRecommendations, getContentStatus } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -713,18 +713,50 @@ export default function ContentPlaybook() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [regenerating, setRegenerating] = useState(false)
+  const [aiGenerating, setAiGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState('linkedin')
   const [error, setError] = useState(null)
+  const pollRef = React.useRef(null)
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
+  const startPolling = () => {
+    stopPolling()
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await getContentStatus()
+        if (status.data.ai_ready) {
+          stopPolling()
+          setAiGenerating(false)
+          // Reload with fresh AI data
+          const res = await getContentRecommendations(false)
+          if (res.data && !res.data.error) setData(res.data)
+        }
+      } catch { /* ignore poll errors */ }
+    }, 8000) // poll every 8 seconds
+  }
 
   const load = async (forceRefresh = false) => {
     if (forceRefresh) setRegenerating(true)
     else setLoading(true)
     setError(null)
+    stopPolling()
     try {
       const res = await getContentRecommendations(forceRefresh)
-      setData(res.data)
+      const d = res.data
+      if (!d || d.error) throw new Error('Empty response')
+      setData(d)
+      // If backend is still generating AI data, start polling
+      if (d.generating) {
+        setAiGenerating(true)
+        startPolling()
+      } else {
+        setAiGenerating(false)
+      }
     } catch (e) {
-      setError('Could not load recommendations. Make sure the backend is running.')
+      setError('Could not reach the backend. Check that the app is deployed and running.')
       console.error(e)
     } finally {
       setLoading(false)
@@ -732,7 +764,10 @@ export default function ContentPlaybook() {
     }
   }
 
-  useEffect(() => { load(false) }, [])
+  useEffect(() => {
+    load(false)
+    return () => stopPolling()
+  }, [])
 
   const tabs = [
     { id: 'linkedin',  label: 'LinkedIn',  icon: Linkedin,  color: '#0077B5' },
@@ -755,26 +790,36 @@ export default function ContentPlaybook() {
         <div className="flex items-center gap-2">
           {data?.generated_at && (
             <p className="text-xs text-gray-400">
-              Updated {formatDistanceToNow(new Date(data.generated_at), { addSuffix: true })}
+              {data.ai_generated ? '✨ AI' : '📋 Fallback'} · Updated {formatDistanceToNow(new Date(data.generated_at), { addSuffix: true })}
             </p>
           )}
           <button
             onClick={() => load(true)}
-            disabled={regenerating || loading}
+            disabled={regenerating || loading || aiGenerating}
             className="flex items-center gap-1.5 px-4 py-2 bg-[#1a1a2e] text-white rounded-xl text-sm font-medium hover:bg-[#2a2a4e] transition disabled:opacity-60"
           >
-            <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
-            {regenerating ? 'Generating...' : 'Regenerate with AI'}
+            <RefreshCw size={14} className={(regenerating || aiGenerating) ? 'animate-spin' : ''} />
+            {regenerating ? 'Queuing...' : aiGenerating ? 'AI Working...' : 'Regenerate with AI'}
           </button>
         </div>
       </div>
+
+      {/* AI generating in background banner */}
+      {aiGenerating && data && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-3 flex items-center gap-3">
+          <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <p className="text-sm text-indigo-700 font-medium">
+            Gemini AI is generating your personalised playbook in the background — showing template data for now. Page will auto-update when ready (usually 1–2 min).
+          </p>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-gray-100">
           <div className="w-10 h-10 border-4 border-[#2EC4B6] border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-500 font-medium">Generating your content playbook with AI...</p>
-          <p className="text-gray-400 text-sm mt-1">Analysing competitor landscape & crafting post recommendations</p>
+          <p className="text-gray-500 font-medium">Loading content playbook...</p>
+          <p className="text-gray-400 text-sm mt-1">Fetching from server</p>
         </div>
       )}
 
@@ -782,7 +827,10 @@ export default function ContentPlaybook() {
       {error && !loading && (
         <div className="bg-red-50 border border-red-100 rounded-2xl p-5 flex items-start gap-3">
           <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700">{error}</p>
+          <div>
+            <p className="text-sm text-red-700 font-medium mb-1">{error}</p>
+            <button onClick={() => load(false)} className="text-xs text-red-600 underline hover:no-underline">Try again</button>
+          </div>
         </div>
       )}
 
