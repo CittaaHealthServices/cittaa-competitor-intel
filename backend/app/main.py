@@ -34,13 +34,35 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Database initialized")
 
         from app.database import AsyncSessionLocal
+        from sqlalchemy import update as sa_update
         async with AsyncSessionLocal() as db:
-            count = await db.execute(select(func.count(Competitor.id)))
-            if count.scalar() == 0:
-                for comp_data in DEFAULT_COMPETITORS:
+            # Always upsert default competitors so handle/link changes take effect on redeploy
+            for comp_data in DEFAULT_COMPETITORS:
+                existing = await db.execute(
+                    select(Competitor).where(Competitor.name == comp_data["name"])
+                )
+                existing_comp = existing.scalar_one_or_none()
+                if existing_comp:
+                    # Update all fields so corrected links/handles are picked up
+                    await db.execute(
+                        sa_update(Competitor)
+                        .where(Competitor.name == comp_data["name"])
+                        .values(**{k: v for k, v in comp_data.items() if k != "name"})
+                    )
+                else:
                     db.add(Competitor(**comp_data))
-                await db.commit()
-                logger.info(f"✅ Seeded {len(DEFAULT_COMPETITORS)} default competitors")
+            # Also handle renames: if "InnerHour" is in DB, rename to "Amaha"
+            old_name_result = await db.execute(
+                select(Competitor).where(Competitor.name == "InnerHour")
+            )
+            old_comp = old_name_result.scalar_one_or_none()
+            if old_comp:
+                amaha_data = next((c for c in DEFAULT_COMPETITORS if c["name"] == "Amaha"), None)
+                if amaha_data:
+                    for key, val in amaha_data.items():
+                        setattr(old_comp, key, val)
+            await db.commit()
+            logger.info(f"✅ Seeded/updated {len(DEFAULT_COMPETITORS)} default competitors")
     except Exception as e:
         logger.warning(f"⚠️ DB init skipped (will retry on first request): {e}")
 

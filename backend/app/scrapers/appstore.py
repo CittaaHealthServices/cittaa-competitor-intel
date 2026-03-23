@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 GOOGLE_PLAY_IDS = {
     "YourDOST":   "com.yourdost.app",
     "Wysa":       "bot.touchkin",
-    "InnerHour":  "com.theinnerhour",
+    "Amaha":      "com.theinnerhour",   # InnerHour rebranded to Amaha
     "MindPeers":  "com.mindpeers.app",
     "HeartItOut": "com.heartitout.app",
     "Lissun":     "com.lissun.app",
@@ -33,7 +33,7 @@ GOOGLE_PLAY_IDS = {
 APPLE_APP_IDS = {
     "YourDOST":   "1037348913",
     "Wysa":       "1166585565",
-    "InnerHour":  "1118436464",
+    "Amaha":      "1118436464",         # InnerHour / Amaha app
     "Headspace":  "493145008",
     "Calm":       "571800810",
     "Talkspace":  "661829386",
