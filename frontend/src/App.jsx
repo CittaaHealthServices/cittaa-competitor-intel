@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Globe2, Zap, Settings, Bell,
-  Menu, X, RefreshCw, Mail, ChevronRight, Search
+  Menu, X, RefreshCw, Mail, ChevronRight, Search, BookOpen
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Competitors from './pages/Competitors'
@@ -10,6 +10,7 @@ import Feed from './pages/Feed'
 import InsightsPage from './pages/Insights'
 import SettingsPage from './pages/SettingsPage'
 import IntelProfile from './pages/IntelProfile'
+import ContentPlaybook from './pages/ContentPlaybook'
 import { triggerScrapeAll, sendDigestNow } from './services/api'
 
 const PLATFORM_META = {
@@ -25,6 +26,8 @@ const PLATFORM_META = {
   jobs:          { label: 'Jobs',       color: '#6C63FF', emoji: '🧑‍💼' },
   funding:       { label: 'Funding',    color: '#F7B731', emoji: '💰' },
   techstack:     { label: 'Tech Stack', color: '#6D28D9', emoji: '🔬' },
+  employee:      { label: 'Employee',   color: '#FF6B8A', emoji: '👥' },
+  strategy:      { label: 'Strategy',  color: '#6D28D9', emoji: '🎯' },
 }
 
 export { PLATFORM_META }
@@ -35,6 +38,7 @@ function Sidebar({ isOpen, setIsOpen }) {
     { to: '/competitors', icon: Globe2,           label: 'Competitors' },
     { to: '/feed',        icon: Zap,              label: 'Live Feed' },
     { to: '/intel',       icon: Search,           label: 'Deep Intel' },
+    { to: '/content',     icon: BookOpen,         label: 'Content Lab' },
     { to: '/insights',    icon: Bell,             label: 'Insights' },
     { to: '/settings',    icon: Settings,         label: 'Settings' },
   ]
@@ -185,6 +189,7 @@ export default function App() {
               <Route path="/feed"            element={<Feed />} />
               <Route path="/intel"           element={<IntelProfile />} />
               <Route path="/intel/:competitorId" element={<IntelProfile />} />
+              <Route path="/content"        element={<ContentPlaybook />} />
               <Route path="/insights"        element={<InsightsPage />} />
               <Route path="/settings"        element={<SettingsPage />} />
             </Routes>

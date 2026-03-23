@@ -42,6 +42,10 @@ export const getCompetitorJobs = (id) => api.get(`/intel/${id}/jobs`)
 export const getCompetitorFundingNews = (id) => api.get(`/intel/${id}/funding-news`)
 export const getAppStoreReviews = (id) => api.get(`/intel/${id}/appstore-reviews`)
 
+// Content Playbook
+export const getContentRecommendations = (forceRefresh = false) =>
+  api.get('/content/recommendations', { params: { force_refresh: forceRefresh }, timeout: 60000 })
+
 // Actions
 export const triggerScrapeAll = () => api.post('/scrape/trigger-all')
 export const sendDigestNow = () => api.post('/email/send-digest')
