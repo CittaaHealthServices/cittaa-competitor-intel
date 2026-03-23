@@ -4,7 +4,8 @@ import { formatDistanceToNow } from 'date-fns'
 import {
   ExternalLink, RefreshCw, ArrowLeft, Star, Download,
   Briefcase, DollarSign, Code2, Smartphone, Users,
-  TrendingUp, ChevronDown, ChevronUp, AlertCircle
+  TrendingUp, ChevronDown, ChevronUp, AlertCircle,
+  Heart, Target, Zap, Shield, Eye
 } from 'lucide-react'
 import {
   getCompetitors, getCompetitorIntel, refreshCompetitorIntel,
@@ -350,6 +351,293 @@ function TechStackSection({ intel }) {
   )
 }
 
+// ─── Employee Pulse Section ───────────────────────────────────────────────────
+function EmployeePulseSection({ intel }) {
+  const emp = intel?.employee_sentiment
+  const ab = emp?.ambitionbox
+  const gd = emp?.glassdoor
+
+  const sentimentConfig = {
+    positive: { color: '#2EC4B6', bg: 'bg-teal-50', label: '😊 Positive', border: 'border-teal-200' },
+    mixed:    { color: '#F7B731', bg: 'bg-yellow-50', label: '😐 Mixed', border: 'border-yellow-200' },
+    negative: { color: '#FF4757', bg: 'bg-red-50', label: '😟 Negative', border: 'border-red-200' },
+  }
+  const sentiment = sentimentConfig[emp?.overall_sentiment] || sentimentConfig.mixed
+
+  const RatingBar = ({ label, value, max = 5, color = '#2EC4B6' }) => {
+    if (!value) return null
+    const pct = Math.min((value / max) * 100, 100)
+    return (
+      <div className="flex items-center gap-2 text-xs">
+        <span className="w-28 text-gray-500 truncate">{label}</span>
+        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+        </div>
+        <span className="font-semibold text-gray-700 w-6 text-right">{value?.toFixed(1)}</span>
+      </div>
+    )
+  }
+
+  if (!ab && !gd) return (
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <SectionHeader title="Employee Pulse" icon={Heart} color="#FF6B8A" />
+      <p className="text-sm text-gray-400">No employee data yet. Refresh intel to fetch from Glassdoor & AmbitionBox.</p>
+    </div>
+  )
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <SectionHeader title="Employee Pulse" icon={Heart} color="#FF6B8A" />
+
+      {/* Sentiment banner */}
+      {emp?.overall_sentiment && (
+        <div className={`${sentiment.bg} border ${sentiment.border} rounded-xl px-4 py-3 mb-5 flex items-center gap-3`}>
+          <span className="text-2xl">{sentiment.label.split(' ')[0]}</span>
+          <div>
+            <p className="font-semibold text-sm text-gray-800">Overall: {sentiment.label.slice(2)}</p>
+            <p className="text-xs text-gray-500">Based on {[ab?.reviews_count, gd?.reviews_count].filter(Boolean).reduce((a, b) => a + b, 0).toLocaleString() || 'multiple'} employee reviews</p>
+          </div>
+        </div>
+      )}
+
+      {/* Source cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        {ab && (
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🇮🇳</span>
+                <span className="font-semibold text-sm text-gray-700">AmbitionBox</span>
+              </div>
+              {ab.url && <a href={ab.url} target="_blank" rel="noreferrer"><ExternalLink size={12} className="text-gray-400" /></a>}
+            </div>
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-3xl font-bold text-gray-800">{ab.rating?.toFixed(1)}</span>
+              <span className="text-sm text-gray-400">/ 5</span>
+              {ab.reviews_count && <span className="text-xs text-gray-400 ml-1">{ab.reviews_count?.toLocaleString()} reviews</span>}
+            </div>
+            <div className="space-y-1.5">
+              <RatingBar label="Work Culture" value={ab.culture} color="#2EC4B6" />
+              <RatingBar label="Work-Life Balance" value={ab.work_life} color="#6C63FF" />
+              <RatingBar label="Management" value={ab.management} color="#F7B731" />
+              <RatingBar label="Career Growth" value={ab.growth} color="#FF6B35" />
+            </div>
+          </div>
+        )}
+
+        {gd && (
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🌐</span>
+                <span className="font-semibold text-sm text-gray-700">Glassdoor</span>
+              </div>
+              {gd.url && <a href={gd.url} target="_blank" rel="noreferrer"><ExternalLink size={12} className="text-gray-400" /></a>}
+            </div>
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-3xl font-bold text-gray-800">{gd.rating?.toFixed(1)}</span>
+              <span className="text-sm text-gray-400">/ 5</span>
+              {gd.reviews_count && <span className="text-xs text-gray-400 ml-1">{gd.reviews_count?.toLocaleString()} reviews</span>}
+            </div>
+            <div className="space-y-1.5">
+              <RatingBar label="Culture" value={gd.culture} color="#2EC4B6" />
+              <RatingBar label="Work-Life" value={gd.work_life} color="#6C63FF" />
+              <RatingBar label="Management" value={gd.management} color="#F7B731" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Why people join */}
+      {emp?.join_signals?.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-500 mb-2">✅ WHY PEOPLE JOIN</p>
+          <div className="flex flex-wrap gap-2">
+            {emp.join_signals.map((s, i) => (
+              <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">{s}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Why people leave */}
+      {emp?.exit_signals?.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-500 mb-2">🚪 WHY PEOPLE LEAVE</p>
+          <div className="flex flex-wrap gap-2">
+            {emp.exit_signals.map((s, i) => (
+              <span key={i} className="text-xs bg-orange-50 text-orange-700 border border-orange-100 px-2.5 py-1 rounded-full">{s}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pros / Cons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {emp?.key_pros?.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">👍 TOP PROS</p>
+            <div className="space-y-1.5">
+              {emp.key_pros.slice(0, 4).map((p, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-green-400 mt-0.5 flex-shrink-0">•</span>
+                  <p className="text-xs text-gray-600 leading-relaxed">{p}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {emp?.key_cons?.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">👎 TOP CONS</p>
+            <div className="space-y-1.5">
+              {emp.key_cons.slice(0, 4).map((c, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5 flex-shrink-0">•</span>
+                  <p className="text-xs text-gray-600 leading-relaxed">{c}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Red flags */}
+      {emp?.red_flags?.length > 0 && (
+        <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+          <p className="text-xs font-semibold text-red-600 mb-1.5">⚠️ RED FLAGS DETECTED</p>
+          <div className="space-y-1">
+            {emp.red_flags.map((f, i) => (
+              <p key={i} className="text-xs text-red-700">{f}</p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Strategy Intelligence Section ───────────────────────────────────────────
+function StrategySection({ intel }) {
+  const strategy = intel?.strategy
+
+  const POSTURE_CONFIG = {
+    'Aggressive':    { color: '#FF4757', bg: 'bg-red-50',    border: 'border-red-200',    icon: '⚡', description: 'Growing fast, spending big' },
+    'Scaling':       { color: '#FF6B35', bg: 'bg-orange-50', border: 'border-orange-200', icon: '🚀', description: 'Steady, sustained growth' },
+    'Consolidating': { color: '#2EC4B6', bg: 'bg-teal-50',   border: 'border-teal-200',   icon: '🛡', description: 'Stable, optimizing margins' },
+    'Pivoting':      { color: '#F7B731', bg: 'bg-yellow-50', border: 'border-yellow-200', icon: '🔄', description: 'Changing direction' },
+    'Struggling':    { color: '#94a3b8', bg: 'bg-gray-50',   border: 'border-gray-200',   icon: '📉', description: 'Under pressure' },
+  }
+
+  const THREAT_CONFIG = {
+    'Low':      { color: '#2EC4B6', bg: 'bg-teal-100',   text: 'text-teal-700' },
+    'Medium':   { color: '#F7B731', bg: 'bg-yellow-100', text: 'text-yellow-700' },
+    'High':     { color: '#FF6B35', bg: 'bg-orange-100', text: 'text-orange-700' },
+    'Critical': { color: '#FF4757', bg: 'bg-red-100',    text: 'text-red-700' },
+  }
+
+  if (!strategy) return (
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <SectionHeader title="Strategic Intelligence" icon={Target} color="#6D28D9" />
+      <p className="text-sm text-gray-400">No strategy analysis yet. Refresh intel to generate AI-powered strategic report.</p>
+    </div>
+  )
+
+  const posture = POSTURE_CONFIG[strategy.posture] || POSTURE_CONFIG['Consolidating']
+  const threat = THREAT_CONFIG[strategy.threat_level] || THREAT_CONFIG['Medium']
+
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <SectionHeader title="Strategic Intelligence" icon={Target} color="#6D28D9" />
+
+      {/* Posture + Threat row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div className={`${posture.bg} border ${posture.border} rounded-xl p-4`}>
+          <p className="text-xs font-semibold text-gray-400 mb-2">STRATEGIC POSTURE</p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">{posture.icon}</span>
+            <span className="text-xl font-bold" style={{ color: posture.color }}>{strategy.posture}</span>
+          </div>
+          <p className="text-xs text-gray-500 italic">{posture.description}</p>
+          {strategy.posture_reason && <p className="text-xs text-gray-600 mt-2">{strategy.posture_reason}</p>}
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4">
+          <p className="text-xs font-semibold text-gray-400 mb-2">THREAT TO CITTAA</p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-lg font-bold px-3 py-1 rounded-full ${threat.bg} ${threat.text}`}>{strategy.threat_level}</span>
+          </div>
+          {strategy.threat_reason && <p className="text-xs text-gray-600">{strategy.threat_reason}</p>}
+        </div>
+      </div>
+
+      {/* Top signals */}
+      {strategy.top_signals?.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-gray-500 mb-2">📡 TOP STRATEGIC SIGNALS (RIGHT NOW)</p>
+          <div className="space-y-2">
+            {strategy.top_signals.map((sig, i) => (
+              <div key={i} className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5">
+                <span className="text-indigo-400 font-bold text-xs flex-shrink-0 mt-0.5">{i + 1}</span>
+                <p className="text-xs text-indigo-800 leading-relaxed">{sig}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Predicted moves */}
+      {strategy.predicted_moves?.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-gray-500 mb-2">🔮 PREDICTED NEXT MOVES (3–6 MONTHS)</p>
+          <div className="space-y-2">
+            {strategy.predicted_moves.map((move, i) => (
+              <div key={i} className="flex items-start gap-3 bg-purple-50 border border-purple-100 rounded-xl px-3 py-2.5">
+                <span className="text-purple-400 text-base flex-shrink-0">→</span>
+                <p className="text-xs text-purple-800 leading-relaxed">{move}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Competitive SWOT */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        {strategy.competitive_advantage && (
+          <div className="bg-green-50 border border-green-100 rounded-xl p-3">
+            <p className="text-xs font-semibold text-green-600 mb-1">💪 Their Advantage vs Cittaa</p>
+            <p className="text-xs text-green-800">{strategy.competitive_advantage}</p>
+          </div>
+        )}
+        {strategy.competitive_weakness && (
+          <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+            <p className="text-xs font-semibold text-orange-600 mb-1">⚠️ Their Weakness</p>
+            <p className="text-xs text-orange-800">{strategy.competitive_weakness}</p>
+          </div>
+        )}
+        {strategy.cittaa_opportunity && (
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+            <p className="text-xs font-semibold text-teal-600 mb-1">🎯 Cittaa's Opportunity</p>
+            <p className="text-xs text-teal-800">{strategy.cittaa_opportunity}</p>
+          </div>
+        )}
+        {strategy.watch_out_for && (
+          <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+            <p className="text-xs font-semibold text-red-600 mb-1">👁 Watch Out For</p>
+            <p className="text-xs text-red-800">{strategy.watch_out_for}</p>
+          </div>
+        )}
+      </div>
+
+      {strategy.analyzed_at && (
+        <p className="text-xs text-gray-400 text-right">
+          AI analysis: {formatDistanceToNow(new Date(strategy.analyzed_at), { addSuffix: true })}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function IntelProfile() {
   const { competitorId } = useParams()
   const navigate = useNavigate()
@@ -413,7 +701,7 @@ export default function IntelProfile() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#1a1a2e]">Deep Intel</h1>
-          <p className="text-gray-500 text-sm mt-1">App ratings, funding, hiring signals & tech stack</p>
+          <p className="text-gray-500 text-sm mt-1">App ratings, funding, hiring, tech stack, employee pulse & AI strategy</p>
         </div>
         {selectedId && (
           <div className="flex items-center gap-2">
@@ -508,7 +796,7 @@ export default function IntelProfile() {
           ) : (
             <div className="space-y-4">
               {/* Quick stats bar */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <StatCard
                   label="Google Play Rating"
                   value={intel?.app_store?.google_play?.rating ? `${intel.app_store.google_play.rating?.toFixed(1)} / 5` : '—'}
@@ -537,6 +825,33 @@ export default function IntelProfile() {
                   icon={Code2}
                   color="#6D28D9"
                 />
+                <StatCard
+                  label="Employee Rating"
+                  value={
+                    intel?.employee_sentiment?.ambitionbox?.rating
+                      ? `${intel.employee_sentiment.ambitionbox.rating?.toFixed(1)} / 5`
+                      : intel?.employee_sentiment?.glassdoor?.rating
+                        ? `${intel.employee_sentiment.glassdoor.rating?.toFixed(1)} / 5`
+                        : '—'
+                  }
+                  sub={intel?.employee_sentiment?.overall_sentiment
+                    ? `${intel.employee_sentiment.overall_sentiment} sentiment`
+                    : 'No data yet'}
+                  icon={Heart}
+                  color="#FF6B8A"
+                />
+                <StatCard
+                  label="Threat Level"
+                  value={intel?.strategy?.threat_level || '—'}
+                  sub={intel?.strategy?.posture ? `Posture: ${intel.strategy.posture}` : 'No analysis yet'}
+                  icon={Target}
+                  color={
+                    intel?.strategy?.threat_level === 'Critical' ? '#FF4757'
+                    : intel?.strategy?.threat_level === 'High' ? '#FF6B35'
+                    : intel?.strategy?.threat_level === 'Medium' ? '#F7B731'
+                    : '#2EC4B6'
+                  }
+                />
               </div>
 
               {/* Main sections */}
@@ -544,6 +859,8 @@ export default function IntelProfile() {
               <FundingSection intel={intel} fundingPosts={fundingNews} />
               <HiringSection intel={intel} jobPosts={jobs} />
               <TechStackSection intel={intel} />
+              <EmployeePulseSection intel={intel} />
+              <StrategySection intel={intel} />
             </div>
           )}
         </>

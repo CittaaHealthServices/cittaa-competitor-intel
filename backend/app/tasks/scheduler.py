@@ -17,6 +17,8 @@ from app.scrapers.appstore import scrape_appstore_posts, scrape_appstore_intel
 from app.scrapers.jobs import scrape_jobs
 from app.scrapers.funding import scrape_funding
 from app.scrapers.techstack import scrape_techstack, get_techstack_structured
+from app.scrapers.glassdoor import scrape_employee_reviews, scrape_employee_review_posts
+from app.scrapers.strategy import analyze_strategy
 from app.ai.gemini import analyze_post, generate_weekly_insights
 from app.config import settings
 
@@ -62,6 +64,7 @@ async def scrape_competitor(competitor, db: AsyncSession):
         "jobs":      scrape_jobs,
         "funding":   scrape_funding,
         "techstack": scrape_techstack,
+        "employee":  scrape_employee_review_posts,
     }
 
     total_saved = 0
@@ -291,6 +294,90 @@ async def _upsert_competitor_intel(comp_dict: dict, db: AsyncSession):
     except Exception as e:
         logger.warning(f"Tech stack intel failed for {name}: {e}")
 
+    # Employee Intelligence (Glassdoor + AmbitionBox)
+    employee_data = {}
+    try:
+        emp = await scrape_employee_reviews(comp_dict)
+        ab = emp.get("ambitionbox") or {}
+        gd = emp.get("glassdoor") or {}
+        employee_data = {
+            "ambitionbox_rating": ab.get("overall_rating"),
+            "ambitionbox_reviews_count": ab.get("total_reviews"),
+            "ambitionbox_culture_rating": ab.get("culture_rating"),
+            "ambitionbox_work_life_rating": ab.get("work_life_rating"),
+            "ambitionbox_management_rating": ab.get("management_rating"),
+            "ambitionbox_growth_rating": ab.get("growth_rating"),
+            "ambitionbox_url": ab.get("url"),
+            "glassdoor_rating": gd.get("overall_rating"),
+            "glassdoor_reviews_count": gd.get("total_reviews"),
+            "glassdoor_culture_rating": gd.get("culture_rating"),
+            "glassdoor_work_life_rating": gd.get("work_life_rating"),
+            "glassdoor_management_rating": gd.get("management_rating"),
+            "glassdoor_url": gd.get("url"),
+            "employee_overall_sentiment": emp.get("overall_sentiment"),
+            "employee_key_pros": emp.get("key_pros", []),
+            "employee_key_cons": emp.get("key_cons", []),
+            "exit_signals": emp.get("exit_signals", []),
+            "join_signals": emp.get("join_signals", []),
+            "employee_red_flags": emp.get("red_flags", []),
+            "current_employee_score": emp.get("current_employee_score"),
+            "former_employee_score": emp.get("former_employee_score"),
+        }
+    except Exception as e:
+        logger.warning(f"Employee intel failed for {name}: {e}")
+
+    # Strategic Intelligence (AI synthesis)
+    strategy_data = {}
+    try:
+        # Build a summary intel dict for the strategy analyzer
+        summary_intel = {
+            "app_store": {
+                "google_play": appstore_data if appstore_data.get("google_play_rating") else None,
+                "apple": {"rating": appstore_data.get("apple_rating"), "reviews_count": appstore_data.get("apple_reviews")} if appstore_data.get("apple_rating") else None,
+            },
+            "funding": {
+                "total": appstore_data.get("total_funding") or jobs_data.get("total_funding"),
+                "last_round": jobs_data.get("last_round"),
+                "last_round_year": jobs_data.get("last_round_year"),
+                "investors": jobs_data.get("investors", []),
+            },
+            "hiring": {
+                "total_open_roles": jobs_data.get("total_open_roles", 0),
+                "hiring_signals": jobs_data.get("hiring_signals", []),
+                "open_roles": jobs_data.get("open_roles", []),
+            },
+            "tech_stack": {
+                "technologies": tech_data.get("technologies", []),
+            },
+            "employee_sentiment": {
+                "overall_sentiment": employee_data.get("employee_overall_sentiment"),
+                "key_pros": employee_data.get("employee_key_pros", []),
+                "key_cons": employee_data.get("employee_key_cons", []),
+                "exit_signals": employee_data.get("exit_signals", []),
+                "red_flags": employee_data.get("employee_red_flags", []),
+                "ambitionbox": {"overall_rating": employee_data.get("ambitionbox_rating")},
+                "glassdoor": {"overall_rating": employee_data.get("glassdoor_rating")},
+            },
+        }
+        strat = await analyze_strategy(comp_dict, summary_intel)
+        strategy_data = {
+            "strategic_posture": strat.get("strategic_posture"),
+            "posture_reason": strat.get("posture_reason"),
+            "threat_level": strat.get("threat_level"),
+            "threat_reason": strat.get("threat_reason"),
+            "top_signals": strat.get("top_signals", []),
+            "predicted_moves": strat.get("predicted_moves", []),
+            "hiring_strategy_insight": strat.get("hiring_strategy"),
+            "employee_strategy_insight": strat.get("employee_intel"),
+            "competitive_advantage": strat.get("competitive_advantage"),
+            "competitive_weakness": strat.get("competitive_weakness"),
+            "cittaa_opportunity": strat.get("cittaa_opportunity"),
+            "watch_out_for": strat.get("watch_out_for"),
+            "strategy_analyzed_at": datetime.now(timezone.utc),
+        }
+    except Exception as e:
+        logger.warning(f"Strategy intel failed for {name}: {e}")
+
     # Merge all data
     intel_values = {
         "competitor_id": comp_id,
@@ -299,6 +386,8 @@ async def _upsert_competitor_intel(comp_dict: dict, db: AsyncSession):
         **appstore_data,
         **jobs_data,
         **tech_data,
+        **employee_data,
+        **strategy_data,
     }
 
     # Upsert

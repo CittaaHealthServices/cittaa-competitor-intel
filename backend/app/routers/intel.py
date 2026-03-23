@@ -161,6 +161,48 @@ def _serialize_intel(row: CompetitorIntel) -> dict:
             "categories": row.tech_categories or {},
             "total_detected": len(row.technologies or []),
         },
+        # Employee Intelligence
+        "employee_sentiment": {
+            "ambitionbox": {
+                "rating": row.ambitionbox_rating,
+                "reviews_count": row.ambitionbox_reviews_count,
+                "culture": row.ambitionbox_culture_rating,
+                "work_life": row.ambitionbox_work_life_rating,
+                "management": row.ambitionbox_management_rating,
+                "growth": row.ambitionbox_growth_rating,
+                "url": row.ambitionbox_url,
+            } if row.ambitionbox_rating else None,
+            "glassdoor": {
+                "rating": row.glassdoor_rating,
+                "reviews_count": row.glassdoor_reviews_count,
+                "culture": row.glassdoor_culture_rating,
+                "work_life": row.glassdoor_work_life_rating,
+                "management": row.glassdoor_management_rating,
+                "url": row.glassdoor_url,
+            } if row.glassdoor_rating else None,
+            "overall_sentiment": row.employee_overall_sentiment,
+            "key_pros": row.employee_key_pros or [],
+            "key_cons": row.employee_key_cons or [],
+            "exit_signals": row.exit_signals or [],
+            "join_signals": row.join_signals or [],
+            "red_flags": row.employee_red_flags or [],
+        },
+        # Strategic Intelligence
+        "strategy": {
+            "posture": row.strategic_posture,
+            "posture_reason": row.posture_reason,
+            "threat_level": row.threat_level,
+            "threat_reason": row.threat_reason,
+            "top_signals": row.top_signals or [],
+            "predicted_moves": row.predicted_moves or [],
+            "hiring_insight": row.hiring_strategy_insight,
+            "employee_insight": row.employee_strategy_insight,
+            "competitive_advantage": row.competitive_advantage,
+            "competitive_weakness": row.competitive_weakness,
+            "cittaa_opportunity": row.cittaa_opportunity,
+            "watch_out_for": row.watch_out_for,
+            "analyzed_at": row.strategy_analyzed_at.isoformat() if row.strategy_analyzed_at else None,
+        } if row.strategic_posture else None,
         "last_refreshed_at": row.last_refreshed_at.isoformat() if row.last_refreshed_at else None,
     }
 

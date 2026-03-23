@@ -16,6 +16,8 @@ class PlatformEnum(str, enum.Enum):
     JOBS = "jobs"            # LinkedIn Jobs, Indeed, Naukri
     FUNDING = "funding"      # Crunchbase, funding news
     TECHSTACK = "techstack"  # Website technology detection
+    EMPLOYEE = "employee"    # Glassdoor + AmbitionBox employee reviews
+    STRATEGY = "strategy"    # AI-generated strategic intelligence
 
 class SentimentEnum(str, enum.Enum):
     POSITIVE = "positive"
@@ -163,6 +165,48 @@ class CompetitorIntel(Base):
     # Tech Stack
     technologies = Column(JSON, default=[])         # [{name, category, signal}]
     tech_categories = Column(JSON, default={})      # {category: [tech_name, ...]}
+
+    # ── Employee Intelligence (Glassdoor + AmbitionBox) ──────────────────────
+    # Ratings
+    ambitionbox_rating = Column(Float)
+    ambitionbox_reviews_count = Column(Integer)
+    ambitionbox_culture_rating = Column(Float)
+    ambitionbox_work_life_rating = Column(Float)
+    ambitionbox_management_rating = Column(Float)
+    ambitionbox_growth_rating = Column(Float)
+    ambitionbox_url = Column(String(500))
+
+    glassdoor_rating = Column(Float)
+    glassdoor_reviews_count = Column(Integer)
+    glassdoor_culture_rating = Column(Float)
+    glassdoor_work_life_rating = Column(Float)
+    glassdoor_management_rating = Column(Float)
+    glassdoor_url = Column(String(500))
+
+    # Sentiment synthesis
+    employee_overall_sentiment = Column(String(20))  # positive / mixed / negative
+    employee_key_pros = Column(JSON, default=[])      # top things employees like
+    employee_key_cons = Column(JSON, default=[])      # top complaints
+    exit_signals = Column(JSON, default=[])           # why people leave
+    join_signals = Column(JSON, default=[])           # why people join
+    employee_red_flags = Column(JSON, default=[])     # serious issues
+    current_employee_score = Column(Float)
+    former_employee_score = Column(Float)
+
+    # ── Strategic Intelligence (AI-synthesized) ───────────────────────────────
+    strategic_posture = Column(String(50))            # Aggressive/Scaling/Consolidating/Pivoting/Struggling
+    posture_reason = Column(Text)
+    threat_level = Column(String(20))                 # Low/Medium/High/Critical
+    threat_reason = Column(Text)
+    top_signals = Column(JSON, default=[])            # list of 5 strategic signals
+    predicted_moves = Column(JSON, default=[])        # next 3-6 months predictions
+    hiring_strategy_insight = Column(Text)
+    employee_strategy_insight = Column(Text)
+    competitive_advantage = Column(Text)
+    competitive_weakness = Column(Text)
+    cittaa_opportunity = Column(Text)
+    watch_out_for = Column(Text)
+    strategy_analyzed_at = Column(DateTime(timezone=True))
 
     # Meta
     last_refreshed_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
