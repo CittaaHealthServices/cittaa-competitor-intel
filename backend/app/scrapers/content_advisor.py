@@ -40,6 +40,10 @@ Key USPs:
 - Quick onboarding for corporates
 
 Website: cittaa.in
+Social media:
+- LinkedIn: linkedin.com/company/cittaa-the-powerofmind
+- Instagram: @cittaa_powerofmind
+- YouTube: youtube.com/@cittaa9291
 Brand voice: Warm, professional, science-backed, de-stigmatizing, relatable.
 
 Primary goal: Get HR managers / CHROs to request a demo for corporate EAP pricing.

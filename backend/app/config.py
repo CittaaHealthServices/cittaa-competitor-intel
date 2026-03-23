@@ -53,7 +53,7 @@ DEFAULT_COMPETITORS = [
         "linkedin_slug": "cittaa-the-powerofmind",
         "twitter_handle": "cittaa9",
         "instagram_handle": "cittaa_powerofmind",
-        "youtube_channel": "",
+        "youtube_channel": "cittaa9291",
         "news_keywords": ["Cittaa", "Cittaa mental health", "cittaa.in", "Cittaa wellness"],
         "category": "Self",
         "description": "Cittaa — our own brand (self-monitoring)"
